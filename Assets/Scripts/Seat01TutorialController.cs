@@ -12,6 +12,10 @@ public class Seat01TutorialController : MonoBehaviour
     [Header("Seat Detection")]
     public float controlRadius = 0.9f;
 
+    [Tooltip("Wenn aktiv, ignoriert die Sitzplatz-Distanz die Höhe (Y-Achse). " +
+             "Empfohlen, damit das Verstellen der Höhe mit dem linken Stick die Story nicht erneut auslöst.")]
+    public bool ignoreHeightForSeatCheck = true;
+
     [Header("Millikan Visibility")]
     public bool hideMillikanAtStart = true;
     public bool keepMillikanVisibleAfterAppearing = true;
@@ -19,6 +23,7 @@ public class Seat01TutorialController : MonoBehaviour
     private bool wasInsideSeat01 = false;
     private bool millikanHasAppeared = false;
     private bool tutorialStartPending = false;
+    private bool tutorialHasStartedOnce = false;   // One-Shot-Latch: Tutorial startet nur EINMAL
 
     private void Start()
     {
@@ -31,7 +36,7 @@ public class Seat01TutorialController : MonoBehaviour
         if (playerRoot == null || seat01Point == null || tutorialController == null)
             return;
 
-        float distance = Vector3.Distance(playerRoot.position, seat01Point.position);
+        float distance = GetSeatDistance();
         bool isInsideSeat01 = distance <= controlRadius;
 
         if (isInsideSeat01 && !wasInsideSeat01)
@@ -49,6 +54,20 @@ public class Seat01TutorialController : MonoBehaviour
         }
     }
 
+    // Distanz zum Sitzplatz. Standardmäßig horizontal (XZ),
+    // damit Höhenänderungen die Erkennung nicht beeinflussen.
+    private float GetSeatDistance()
+    {
+        if (!ignoreHeightForSeatCheck)
+            return Vector3.Distance(playerRoot.position, seat01Point.position);
+
+        Vector3 a = playerRoot.position;
+        Vector3 b = seat01Point.position;
+        a.y = 0f;
+        b.y = 0f;
+        return Vector3.Distance(a, b);
+    }
+
     private void ShowMillikan()
     {
         if (millikanObject == null)
@@ -63,7 +82,8 @@ public class Seat01TutorialController : MonoBehaviour
 
     private void StartTutorialAfterMillikanIsReady()
     {
-        if (tutorialStartPending)
+        // Tutorial nie mehr als einmal starten.
+        if (tutorialHasStartedOnce || tutorialStartPending)
             return;
 
         StartCoroutine(StartTutorialNextFrame());
@@ -78,6 +98,7 @@ public class Seat01TutorialController : MonoBehaviour
         if (tutorialController != null)
             tutorialController.BeginTutorialSession();
 
+        tutorialHasStartedOnce = true;   // Latch setzen: ab jetzt kein Neustart mehr
         tutorialStartPending = false;
     }
 }
